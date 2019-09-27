@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+  app:
+    working_dir: /app/backend
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: amcgavin/audience-poll:dev
+    command: python -m poll
+    user: '1000'
+    restart: on-failure:5
+    stdin_open: false
+    environment:
+      - TERM=xterm-256color
+    volumes:
+      - .:/app
+    ports:
+      - '127.0.0.1:8765:8765'

@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "audience-poll"
+version = "0.1.0"
+description = ""
+authors = ["Alec McGavin"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+websockets = "^8.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^3.0"
+ipython = "^7.8"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"

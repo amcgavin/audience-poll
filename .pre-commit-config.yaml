@@ -11,6 +11,13 @@ repos:
     - id: black
       args: [--line-length=100, --target-version=py37]
 
+- repo: https://github.com/prettier/prettier
+  rev: '1.18.2' # Use the sha or tag you want to point at
+  hooks:
+    - id: prettier
+      args: [--config=client/.prettierrc.yaml]
+      files: '^.*\.tsx?$'
+
 - repo: git://github.com/pre-commit/pre-commit-hooks
   rev: v2.1.0
   hooks:

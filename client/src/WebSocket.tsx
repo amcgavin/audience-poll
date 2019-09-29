@@ -2,15 +2,15 @@ import * as React from 'react'
 
 export interface WebSocketProviderProps {
   url: string
-  children: React.ReactChildren
+  children: React.ReactNode
 }
 
 export type WebSocketSend = (message: string) => void
 
-const WebSocketContext = React.createContext<WebSocket | undefined>(undefined)
+const WebSocketContext = React.createContext<WebSocket | null>(null)
 
-export const useWebSocket = (): WebSocket | undefined => {
-  return React.useContext<WebSocket | undefined>(WebSocketContext)
+export const useWebSocket = (): WebSocket | null => {
+  return React.useContext<WebSocket | null>(WebSocketContext)
 }
 
 export const useSend = (): WebSocketSend => {
@@ -42,16 +42,19 @@ export const useWebSocketState = (dispatcher: WebSocketStateConsumer) => {
   }, [webSocket, dispatcher])
 }
 
-export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({url, children}) => {
-  const websocket = React.useRef<WebSocket>()
+export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
+  url,
+  children,
+}: WebSocketProviderProps) => {
+  const [webSocket, setWebSocket] = React.useState<WebSocket | null>(null)
   React.useEffect(() => {
     const socket = new WebSocket(url)
-    websocket.current = socket
+    setWebSocket(socket)
     return () => {
       socket.close()
     }
   }, [url])
-  return <WebSocketContext.Provider value={websocket.current}>{children}</WebSocketContext.Provider>
+  return <WebSocketContext.Provider value={webSocket}>{children}</WebSocketContext.Provider>
 }
 
 export default WebSocketProvider

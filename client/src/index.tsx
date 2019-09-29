@@ -1,11 +1,5 @@
-import * as React from 'react'
+import PollProvider, {usePoll, ApplicationState} from './PollProvider'
 
-export interface Props {
-  prop: string
-}
+export default PollProvider
 
-const MyComponent: React.FC<Props> = () => {
-  return <div>Component</div>
-}
-
-export default MyComponent
+export {usePoll, ApplicationState}

@@ -1,8 +1,11 @@
 import * as React from 'react'
 
+export type MessageHandler = (message: MessageEvent) => void
+
 export interface WebSocketProviderProps {
   url: string
   children: React.ReactNode
+  onMessage: MessageHandler
 }
 
 export type WebSocketSend = (message: string) => void
@@ -23,37 +26,29 @@ export const useSend = (): WebSocketSend => {
   )
 }
 
-export type WebSocketStateConsumer = (message: object) => void
-
-export const useWebSocketState = (dispatcher: WebSocketStateConsumer) => {
-  const webSocket = useWebSocket()
-  React.useEffect(() => {
-    const listener = (event: MessageEvent) => {
-      dispatcher(JSON.parse(event.data))
-    }
-    if (webSocket) {
-      webSocket.addEventListener('message', listener)
-    }
-    return () => {
-      if (webSocket) {
-        webSocket.removeEventListener('message', listener)
-      }
-    }
-  }, [webSocket, dispatcher])
-}
-
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
   url,
   children,
+  onMessage,
 }: WebSocketProviderProps) => {
   const [webSocket, setWebSocket] = React.useState<WebSocket | null>(null)
   React.useEffect(() => {
     const socket = new WebSocket(url)
     setWebSocket(socket)
     return () => {
-      socket.close()
+      if (socket) socket.close()
     }
   }, [url])
+  React.useEffect(() => {
+    if (webSocket) {
+      webSocket.addEventListener('message', onMessage)
+    }
+    return () => {
+      if (webSocket) {
+        webSocket.removeEventListener('message', onMessage)
+      }
+    }
+  }, [webSocket, onMessage])
   return <WebSocketContext.Provider value={webSocket}>{children}</WebSocketContext.Provider>
 }
 

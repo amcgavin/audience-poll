@@ -1,5 +1,5 @@
 import * as React from 'react'
-import WebSocketProvider, {useWebSocketState, WebSocketProviderProps} from './WebSocket'
+import WebSocketProvider, {MessageHandler, WebSocketProviderProps} from './WebSocket'
 
 enum ActionTypes {
   RESET = 'reset',
@@ -70,60 +70,22 @@ const reducer = (
   }
 }
 
-export type Selector<T> = (state: ApplicationState) => T
-
-interface ChangeListener<T> {
-  update: (state: T) => void
-  selector: Selector<T>
-}
-
-interface PollContextValue {
-  state: ApplicationState
-  listeners: ChangeListener<any>[]
-}
-
-const PollContext = React.createContext<PollContextValue>({state: initialState, listeners: []})
-
-export function usePoll<T>(selector: Selector<T>) {
-  /* This is causing rerenders every time the state changes. Not sure if it's because of setState bailing too late*/
-  const {state, listeners} = React.useContext(PollContext)
-  const [value, setValue] = React.useState<T>(selector(state))
-  React.useEffect(() => {
-    const listener = {update: setValue, selector}
-    listeners.push(listener)
-    return () => {
-      const idx = listeners.indexOf(listener)
-      if (idx !== -1) {
-        listeners.splice(idx, 1)
-      }
-    }
-  }, [listeners, selector])
-  return value
-}
-
-const PollState: React.FC<{children: React.ReactNode}> = ({
-  children,
-}: {
-  children: React.ReactNode
-}) => {
-  const [state, dispatch] = React.useReducer(reducer, initialState)
-  const ref = React.useRef<PollContextValue>({state, listeners: []})
-  React.useEffect(() => {
-    ref.current.listeners.forEach((listener: ChangeListener<any>) => {
-      listener.update(listener.selector(state))
-    })
-  }, [state])
-  useWebSocketState(dispatch)
-  return <PollContext.Provider value={ref.current}>{children}</PollContext.Provider>
-}
-
 const PollProvider: React.FC<WebSocketProviderProps> = ({
   url,
   children,
-}: WebSocketProviderProps) => (
-  <WebSocketProvider url={url}>
-    <PollState>{children}</PollState>
-  </WebSocketProvider>
-)
+}: WebSocketProviderProps) => {
+  const [state, dispatch] = React.useReducer(reducer, initialState)
+  const onMessage = React.useCallback<MessageHandler>(
+    message => {
+      dispatch(JSON.parse(message.data))
+    },
+    [dispatch]
+  )
+  return (
+    <WebSocketProvider url={url} onMessage={onMessage}>
+      {children}
+    </WebSocketProvider>
+  )
+}
 
 export default PollProvider

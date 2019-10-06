@@ -70,11 +70,65 @@ const reducer = (
   }
 }
 
+export type Selector<T> = (state: ApplicationState) => T
+type Subscriber = (state: ApplicationState) => void
+
+type StateSubscribers = {
+  state: ApplicationState
+  addSubscriber: (subscriber: Subscriber) => void
+  removeSubscriber: (subscriber: Subscriber) => void
+}
+
+const useSubscribers = () => {
+  const subscribers = React.useRef<Subscriber[]>([])
+  const addSubscriber = (subscriber: Subscriber) => {
+    subscribers.current.push(subscriber)
+  }
+  const removeSubscriber = (subscriber: Subscriber) => {
+    const position = subscribers.current.indexOf(subscriber)
+    if (position !== -1) subscribers.current.splice(position, 1)
+  }
+  const notify = (state: ApplicationState) => {
+    subscribers.current.forEach(subscriber => subscriber(state))
+  }
+  return {addSubscriber, removeSubscriber, notify}
+}
+const PollContext = React.createContext<React.MutableRefObject<StateSubscribers | undefined>>({
+  current: {state: initialState, addSubscriber: () => {}, removeSubscriber: () => {}},
+})
+
+function useSelector<T>(selector: Selector<T>) {
+  const [, forceRender] = React.useReducer(s => s + 1, 0)
+  const {
+    current: {state, addSubscriber, removeSubscriber},
+  } = React.useContext(PollContext)
+  const currentState = React.useRef<T>(selector(state))
+  const subscriber = React.useCallback<Subscriber>(
+    (state: ApplicationState) => {
+      // check to see if the prevState was the same
+      // if not, set them differently, force a rerender.
+      selector(state)
+    },
+    [selector]
+  )
+  React.useEffect(() => {
+    addSubscriber(subscriber)
+    return () => {
+      removeSubscriber(subscriber)
+    }
+  }, [subscriber])
+  return currentState.current
+}
+
 const PollProvider: React.FC<WebSocketProviderProps> = ({
   url,
   children,
 }: WebSocketProviderProps) => {
+  const stableState = React.useRef<StateSubscribers>()
   const [state, dispatch] = React.useReducer(reducer, initialState)
+  const {addSubscriber, removeSubscriber, notify} = useSubscribers()
+  stableState.current = {state, addSubscriber, removeSubscriber}
+  notify(state)
   const onMessage = React.useCallback<MessageHandler>(
     message => {
       dispatch(JSON.parse(message.data))
@@ -83,7 +137,7 @@ const PollProvider: React.FC<WebSocketProviderProps> = ({
   )
   return (
     <WebSocketProvider url={url} onMessage={onMessage}>
-      {children}
+      <PollContext.Provider value={stableState}>{children}</PollContext.Provider>
     </WebSocketProvider>
   )
 }
